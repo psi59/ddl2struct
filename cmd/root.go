@@ -5,22 +5,25 @@ import (
 	"go/format"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/atotto/clipboard"
+	executor "github.com/bytewatch/ddl-executor"
 	"github.com/iancoleman/strcase"
-	"github.com/xwb1989/sqlparser"
 )
 
 var cfgFile string
 var (
-	inputPath       string
-	outputPath      string
-	tableName       string
-	ddl             *sqlparser.DDL
-	copyToClipboard bool
+	inputPath        string
+	outputPath       string
+	tableName        string
+	table            *executor.TableDef
+	copyToClipboard  bool
+	columnTypeRegexp = regexp.MustCompile(`(\w+)(\((.+)\))?`)
+	tableNameRegexp  = regexp.MustCompile(`(\w+)(\((.+)\))?`)
 )
 
 var rootCmd = &cobra.Command{
@@ -45,20 +48,7 @@ func init() {
 }
 
 func runCommand(cmd *cobra.Command, args []string) {
-	data, err := ioutil.ReadFile(inputPath)
-	stmt, err := sqlparser.Parse(string(data))
-	if err != nil {
-		panic(err)
-	}
-
-	parsedDDL, ok := stmt.(*sqlparser.DDL)
-	if !ok {
-		panic("not create table")
-	}
-
-	ddl = parsedDDL
-	tableName = ddl.NewName.Name.String()
-
+	parseDDL()
 	structBytes := createStruct()
 	if outputPath != "" {
 		generateFileFromBytes(structBytes)
@@ -71,8 +61,13 @@ func runCommand(cmd *cobra.Command, args []string) {
 	}
 }
 
-func getColumnToType(column sqlparser.ColumnType) string {
-	switch column.Type {
+func getColumnToType(column *executor.ColumnDef) string {
+	if !columnTypeRegexp.MatchString(column.Type) {
+		return "interface{}"
+	}
+
+	parsedColumnType := columnTypeRegexp.FindStringSubmatch(column.Type)
+	switch strings.ToLower(parsedColumnType[1]) {
 	case "varchar":
 		return "string"
 	case "int", "tinyint":
@@ -94,15 +89,40 @@ func getColumnToType(column sqlparser.ColumnType) string {
 	}
 }
 
+func parseDDL() {
+	data, err := ioutil.ReadFile(inputPath)
+	if err != nil {
+		panic(err)
+	}
+
+	sqlExecutor := executor.NewExecutor(executor.NewDefaultConfig())
+	ddl := fmt.Sprintf("CREATE DATABASE ddl2struct; use ddl2struct; %s", string(data))
+	if err := sqlExecutor.Exec(ddl); err != nil {
+		panic(err)
+	}
+	tableNames, err := sqlExecutor.GetTables("ddl2struct")
+	if err != nil {
+		panic(err)
+	}
+	if len(tableNames) == 0 {
+		panic(fmt.Errorf("no tables"))
+	}
+	tableDef, err := sqlExecutor.GetTableDef("ddl2struct", tableNames[0])
+	if err != nil {
+		panic(err)
+	}
+	tableName = tableDef.Name
+	table = tableDef
+}
+
 func createFieldsByColumns() string {
-	columns := ddl.TableSpec.Columns
 	fields := make([]string, 0)
-	for _, column := range columns {
+	for _, column := range table.Columns {
 		fields = append(fields, fmt.Sprintf(
 			"%s %s `json:\"%s\" gorm:\"Column:%s\"`",
-			strcase.ToCamel(column.Name.String()),
-			getColumnToType(column.Type),
-			strcase.ToSnake(column.Name.String()),
+			strcase.ToCamel(column.Name),
+			getColumnToType(column),
+			strcase.ToSnake(column.Name),
 			column.Name,
 		))
 	}
