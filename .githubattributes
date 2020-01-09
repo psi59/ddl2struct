@@ -1,0 +1,2 @@
+*.go linguist-detectable=true
+*.sql linguist-detectable=false

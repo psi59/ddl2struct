@@ -1,0 +1,5 @@
+vendor
+.idea
+ddl2struct.iml
+.DS_Store
+ddl2struct
