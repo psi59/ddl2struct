@@ -57,7 +57,7 @@ func (parser *DDLParser) parseCreateTableStmt(stmt *ast.CreateTableStmt) error {
 	parser.TableName = stmt.Table.Name.String()
 	for _, col := range stmt.Cols {
 		parser.Columns = append(parser.Columns, Column{
-			Name: col.Name.String(),
+			Name: col.Name.Name.String(),
 			Type: parser.getColumnType(col.Tp.EvalType()),
 		})
 	}
