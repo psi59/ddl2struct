@@ -28,15 +28,27 @@ ddl2struct [flags]
 ```sh
 ddl2struct -i example.sql
 ```
-#### example.sql
-```sql
-CREATE TABLE ddl2struct (
-    PersonID int,
-    LastName varchar(255),
-    FirstName varchar(255),
-    Address varchar(255),
-    City varchar(255)
-);
+
+#### Result
+```sh
+#   ____ ____ __      ____ __     ____ ____ ____ _  _  ___ ____ 
+#  (    (    (  )    (_  _/  \   / ___(_  _(  _ / )( \/ __(_  _)
+#   ) D () D / (_/\    )((  O )  \___ \ )(  )   ) \/ ( (__  )(  
+#  (____(____\____/   (__)\__/   (____/(__)(__\_\____/\___)(__)
+
+===============================================================
+TableName: ddl2struct
+ColumnCount: 5
+Save your times: About 10 seconds
+===============================================================
+
+type ddl2struct struct {
+        Personid  int    `json:"personid" gorm:"Column:personid"`
+        Lastname  string `json:"lastname" gorm:"Column:lastname"`
+        Firstname string `json:"firstname" gorm:"Column:firstname"`
+        Address   string `json:"address" gorm:"Column:address"`
+        City      string `json:"city" gorm:"Column:city"`
+}
 ```
 
 ## Author
