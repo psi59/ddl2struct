@@ -37,7 +37,7 @@ func (parser *DDLParser) Parse(sql string) error {
 }
 
 func (parser DDLParser) ToStruct(withTag bool) ([]byte, error) {
-	s := fmt.Sprintf("type %s struct { %s }", parser.TableName, parser.Columns.ToStructFields(withTag))
+	s := fmt.Sprintf("type %s struct { %s }", strcase.ToCamel(parser.TableName), parser.Columns.ToStructFields(withTag))
 	return format.Source([]byte(s))
 }
 
